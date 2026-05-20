@@ -1,11 +1,14 @@
+version: "3"
+
 services:
   backend:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
@@ -16,7 +19,8 @@ services:
       MARIADB_ROOT_PASSWORD: admin
 
   configurator:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
@@ -45,7 +49,8 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   create-site:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
@@ -75,25 +80,28 @@ services:
           fi
         done;
         echo "sites/common_site_config.json found";
-        bench new-site --mariadb-user-host-login-scope='%' --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --set-default frontend;
+        bench new-site --mariadb-user-host-login-scope='%' --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --install-app hrms --install-app erpnext_thailand --set-default frontend;
+        bench set-config -g server_script_enabled 1;
 
   db:
-    image: mariadb:11.8
+    image: mariadb:10.6
     networks:
       - frappe_network
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      start_period: 5s
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: mysqladmin ping -h localhost --password=admin
+      interval: 1s
+      retries: 20
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed # Temporary fix for MariaDB 10.6
+      - --wait_timeout=28800
+      - --interactive_timeout=28800
+      - --max_allowed_packet=256M
     environment:
       MYSQL_ROOT_PASSWORD: admin
       MARIADB_ROOT_PASSWORD: admin
@@ -101,14 +109,15 @@ services:
       - db-data:/var/lib/mysql
 
   frontend:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     depends_on:
       - websocket
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     command:
       - nginx-entrypoint.sh
     environment:
@@ -127,12 +136,13 @@ services:
       - "8080:8080"
 
   queue-long:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     command:
       - bench
       - worker
@@ -146,12 +156,13 @@ services:
       FRAPPE_REDIS_QUEUE: redis://redis-queue:6379
 
   queue-short:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     command:
       - bench
       - worker
@@ -170,7 +181,7 @@ services:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     volumes:
       - redis-queue-data:/data
 
@@ -180,15 +191,16 @@ services:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
 
   scheduler:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     command:
       - bench
       - schedule
@@ -197,12 +209,13 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   websocket:
-    image: frappe/erpnext:v16.19.1
+    image: custom-erpnext-thailand:v15
+    platform: linux/arm64
     networks:
       - frappe_network
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: none
     command:
       - node
       - /home/frappe/frappe-bench/apps/frappe/socketio.js
